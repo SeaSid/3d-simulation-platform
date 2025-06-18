@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>在线仿真平台</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dat.gui/0.7.7/dat.gui.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- 左侧3D视图区域 -->
+        <div class="viewer-container">
+            <div class="viewer-header">
+                <h2>3D CAD 视图</h2>
+                <div class="viewer-controls">
+                    <button id="resetView">重置视图</button>
+                    <button id="wireframe">线框模式</button>
+                    <button id="solid">实体模式</button>
+                </div>
+            </div>
+            <div id="threejs-container"></div>
+            <div class="viewer-info">
+                <div id="object-info">
+                    <p>选择对象: <span id="selected-object">无</span></p>
+                    <p>位置: <span id="object-position">X: 0, Y: 0, Z: 0</span></p>
+                    <p>旋转: <span id="object-rotation">X: 0°, Y: 0°, Z: 0°</span></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧对话和控制面板 -->
+        <div class="sidebar">
+            <!-- 对话区域 -->
+            <div class="chat-section">
+                <h3>AI 仿真助手</h3>
+                <div class="model-status">
+                    <span id="model-status">模型状态: 检查中...</span>
+                    <select id="model-selector" style="display: none;">
+                        <option value="">选择模型</option>
+                    </select>
+                </div>
+                <div id="chat-messages" class="chat-messages">
+                    <div class="message bot">
+                        <div class="message-content">
+                            您好！我是您的仿真助手。我可以帮您创建3D模型、进行物理仿真和分析。请告诉我您需要什么帮助！
+                        </div>
+                    </div>
+                    <div class="chat-message">
+                        <div class="message-content">
+                            <details>
+                                <summary>思考过程</summary>
+                                <think>思考过程内容</think>
+                            </details>
+                        </div>
+                    </div>
+                </div>
+                <div class="chat-input-container">
+                    <input type="text" id="chat-input" placeholder="输入您的问题..." maxlength="500">
+                    <button id="send-message">发送</button>
+                </div>
+            </div>
+
+            <!-- 快速操作面板 -->
+            <div class="quick-actions">
+                <h3>快速操作</h3>
+                <div class="action-buttons">
+                    <button class="action-btn" data-shape="cube">创建立方体</button>
+                    <button class="action-btn" data-shape="sphere">创建球体</button>
+                    <button class="action-btn" data-shape="cylinder">创建圆柱体</button>
+                </div>
+                <div class="simulation-controls">
+                    <h4>仿真控制</h4>
+                    <button id="gravity-sim">重力仿真</button>
+                    <button id="collision-sim">碰撞仿真</button>
+                    <button id="clear-scene">清空场景</button>
+                </div>
+            </div>
+
+            <!-- 参数控制面板 -->
+            <div class="parameters-panel">
+                <h3>参数设置</h3>
+                <div class="parameter-group">
+                    <label for="size-input">尺寸:</label>
+                    <input type="range" id="size-input" min="0.1" max="5" step="0.1" value="1">
+                    <span id="size-value">1.0</span>
+                </div>
+                <div class="parameter-group">
+                    <label for="radius-input">半径:</label>
+                    <input type="range" id="radius-input" min="0.1" max="3" step="0.1" value="1">
+                    <span id="radius-value">1.0</span>
+                </div>
+                <div class="parameter-group">
+                    <label for="height-input">高度:</label>
+                    <input type="range" id="height-input" min="0.1" max="5" step="0.1" value="2">
+                    <span id="radius-value">2.0</span>
+                </div>
+            </div>
+
+            <!-- 仿真状态显示 -->
+            <div class="simulation-status">
+                <h3>仿真状态</h3>
+                <div id="simulation-status-content">
+                    <p>状态: <span id="simulation-status-value">未初始化</span></p>
+                    <p>当前仿真: <span id="simulation-type-value">无</span></p>
+                </div>
+            </div>
+
+            <!-- 仿真结果显示 -->
+            <div class="simulation-results">
+                <h3>仿真结果</h3>
+                <div id="results-content">
+                    <p>暂无仿真结果</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 加载提示 -->
+    <div id="loading" class="loading-overlay" style="display: none;">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <p>正在处理...</p>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html> 
