@@ -26,6 +26,8 @@ body {
     border-radius: 0 15px 15px 0;
     margin: 10px 0 10px 10px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    min-height: 600px;
+    height: 100vh;
 }
 
 .viewer-header {
@@ -68,6 +70,9 @@ body {
     flex: 1;
     background: #000;
     position: relative;
+    min-height: 400px;
+    width: 100%;
+    display: block;
 }
 
 .viewer-info {
@@ -594,5 +599,162 @@ body {
         left: 10px;
         min-width: auto;
         max-width: none;
+    }
+}
+
+/* 工具调用显示样式 */
+.tool-call {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    margin: 8px 0;
+    font-size: 0.85rem;
+    color: #6c757d;
+}
+
+.tool-call summary {
+    padding: 8px 12px;
+    cursor: pointer;
+    font-weight: 500;
+    color: #495057;
+    background: #e9ecef;
+    border-radius: 6px 6px 0 0;
+    transition: background-color 0.2s ease;
+}
+
+.tool-call summary:hover {
+    background: #dee2e6;
+}
+
+.tool-call summary::marker {
+    color: #6c757d;
+    font-size: 0.8rem;
+}
+
+.tool-call .tool-content {
+    padding: 10px 12px;
+    border-top: 1px solid #e9ecef;
+    background: #ffffff;
+    border-radius: 0 0 6px 6px;
+    line-height: 1.4;
+}
+
+.tool-call .tool-name {
+    font-weight: 600;
+    color: #007bff;
+    margin-bottom: 4px;
+}
+
+.tool-call .tool-params {
+    font-family: 'Courier New', monospace;
+    background: #f1f3f4;
+    padding: 4px 6px;
+    border-radius: 3px;
+    margin: 4px 0;
+    font-size: 0.8rem;
+}
+
+.tool-call .tool-result {
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px solid #e9ecef;
+    color: #28a745;
+    font-weight: 500;
+}
+
+.tool-call .tool-error {
+    color: #dc3545;
+    font-weight: 500;
+}
+
+/* 思考过程样式（已存在，但确保一致性） */
+.chat-message details {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    margin: 8px 0;
+    font-size: 0.85rem;
+    color: #6c757d;
+}
+
+.chat-message details summary {
+    padding: 8px 12px;
+    cursor: pointer;
+    font-weight: 500;
+    color: #495057;
+    background: #e9ecef;
+    border-radius: 6px 6px 0 0;
+    transition: background-color 0.2s ease;
+}
+
+.chat-message details summary:hover {
+    background: #dee2e6;
+}
+
+.chat-message details think {
+    display: block;
+    padding: 10px 12px;
+    border-top: 1px solid #e9ecef;
+    background: #ffffff;
+    border-radius: 0 0 6px 6px;
+    line-height: 1.4;
+}
+
+/* 顶部菜单栏样式 */
+.navbar {
+    width: 100vw;
+    background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+    box-shadow: 0 2px 8px #0002;
+    padding: 0 0 0 0;
+    margin-bottom: 0;
+    position: relative;
+    z-index: 100;
+}
+
+.navbar-menu {
+    display: flex;
+    flex-direction: row;
+    list-style: none;
+    margin: 0;
+    padding: 0 32px;
+    height: 56px;
+    align-items: center;
+    gap: 32px;
+}
+
+.navbar-menu li {
+    height: 100%;
+    display: flex;
+    align-items: center;
+}
+
+.navbar-menu a {
+    display: block;
+    color: #fff;
+    font-size: 1.08rem;
+    font-weight: 500;
+    text-decoration: none;
+    padding: 0 18px;
+    height: 40px;
+    line-height: 40px;
+    border-radius: 8px;
+    transition: background 0.2s, color 0.2s;
+    position: relative;
+}
+
+.navbar-menu a:hover,
+.navbar-menu a.active {
+    background: rgba(255,255,255,0.18);
+    color: #ffe082;
+}
+
+@media (max-width: 768px) {
+    .navbar-menu {
+        gap: 12px;
+        padding: 0 8px;
+    }
+    .navbar-menu a {
+        font-size: 0.98rem;
+        padding: 0 8px;
     }
 } 

@@ -1,10 +1,14 @@
 import json
 import logging
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 import ollama
 import numpy as np
 from dataclasses import dataclass
 from enum import Enum
+import asyncio
+import uuid
+import httpx
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +45,100 @@ class Shape:
             "parameters": self.parameters
         }
 
+class MCPClient:
+    """MCP客户端，用于与FastMCP服务器通信"""
+    
+    def __init__(self, base_url: str = "http://localhost:8000"):
+        self.base_url = base_url
+        self.session_id = str(uuid.uuid4())
+        self.client = httpx.AsyncClient()
+        self.initialized = False
+    
+    async def initialize(self) -> bool:
+        """初始化MCP连接"""
+        try:
+            init_payload = {
+                "jsonrpc": "2.0",
+                "id": "init-1",
+                "method": "initialize",
+                "params": {
+                    "protocolVersion": "2024-11-05",
+                    "capabilities": {
+                        "tools": {}
+                    },
+                    "clientInfo": {
+                        "name": "simulation-service-client",
+                        "version": "1.0.0"
+                    }
+                }
+            }
+            
+            headers = {
+                "Content-Type": "application/json",
+                "Accept": "application/json, text/event-stream",
+                "mcp-session-id": self.session_id
+            }
+            
+            response = await self.client.post(
+                f"{self.base_url}/mcp/",
+                json=init_payload,
+                headers=headers,
+                timeout=30.0
+            )
+            
+            if response.status_code == 200:
+                self.initialized = True
+                return True
+            else:
+                print(f"初始化失败: HTTP {response.status_code}")
+                return False
+                
+        except Exception as e:
+            print(f"初始化异常: {e}")
+            return False
+    
+    async def call_tool(self, method: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """调用MCP工具"""
+        if not self.initialized:
+            if not await self.initialize():
+                return {"error": "MCP连接未初始化"}
+        
+        # 构建JSON-RPC 2.0请求
+        request_data = {
+            "jsonrpc": "2.0",
+            "id": str(uuid.uuid4()),
+            "method": method,
+            "params": params or {}
+        }
+        
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json, text/event-stream",
+            "mcp-session-id": self.session_id  # 使用同一个session_id
+        }
+        
+        try:
+            response = await self.client.post(
+                f"{self.base_url}/mcp/",
+                json=request_data,
+                headers=headers,
+                timeout=30.0
+            )
+            
+            if response.status_code == 200:
+                return response.json()
+            else:
+                print(f"HTTP {response.status_code}: {response.text}")
+                return {"error": f"HTTP {response.status_code}: {response.text}"}
+                
+        except Exception as e:
+            print(f"请求错误: {e}")
+            return {"error": str(e)}
+    
+    async def close(self):
+        """关闭客户端"""
+        await self.client.aclose()
+
 class MCPService:
     def __init__(self):
         self.shapes: List[Shape] = []
@@ -69,6 +167,28 @@ class MCPService:
         try:
             shape_type_enum = ShapeType(shape_type)
             
+            # 生成唯一ID
+            shape_id = len(self.shapes)
+            
+            # 创建形状数据（简化版本，适合前端Three.js使用）
+            shape_data = {
+                "id": shape_id,
+                "type": shape_type,
+                "parameters": params
+            }
+            
+            # 根据形状类型添加特定参数
+            if shape_type_enum == ShapeType.CUBE:
+                shape_data["size"] = params.get("size", 1.0)
+            elif shape_type_enum == ShapeType.SPHERE:
+                shape_data["radius"] = params.get("radius", 1.0)
+            elif shape_type_enum == ShapeType.CYLINDER:
+                shape_data["radius"] = params.get("radius", 1.0)
+                shape_data["height"] = params.get("height", 2.0)
+            else:
+                return {"success": False, "error": f"不支持的形状类型: {shape_type}"}
+
+            # 创建完整的Shape对象用于内部存储
             if shape_type_enum == ShapeType.CUBE:
                 vertices, faces = self._create_cube(params.get("size", 1.0))
             elif shape_type_enum == ShapeType.SPHERE:
@@ -82,8 +202,6 @@ class MCPService:
                     params.get("height", 2.0),
                     params.get("segments", 32)
                 )
-            else:
-                return {"success": False, "error": f"不支持的形状类型: {shape_type}"}
 
             shape = Shape(
                 type=shape_type_enum,
@@ -96,7 +214,7 @@ class MCPService:
 
             return {
                 "success": True,
-                "data": shape.to_dict(),
+                "data": shape_data,
                 "message": f"成功创建{shape_type}形状"
             }
         except Exception as e:
@@ -245,36 +363,31 @@ class MCPService:
         """重力仿真"""
         try:
             gravity = params.get("gravity", 9.81)
-            time_step = params.get("time_step", 0.1)
-            duration = params.get("duration", 1.0)
+            time_step = params.get("time_step", 0.05)
+            steps = params.get("time_steps", 100)
+            initial_position = params.get("initial_position", [0, 10, 0])
+            initial_velocity = params.get("initial_velocity", [0, 0, 0])
             
-            # 模拟重力效果
-            trajectories = []
-            for shape in self.shapes:
-                trajectory = []
-                for t in np.arange(0, duration, time_step):
-                    # 计算每个顶点在重力作用下的位置
-                    new_vertices = []
-                    for vertex in shape.vertices:
-                        new_vertex = Vector3(
-                            vertex.x,
-                            vertex.y,
-                            vertex.z - 0.5 * gravity * t * t
-                        )
-                        new_vertices.append(new_vertex)
-                    trajectory.append([v.to_dict() for v in new_vertices])
-                trajectories.append(trajectory)
+            positions = []
+            velocities = []
+            pos = np.array(initial_position, dtype=float)
+            vel = np.array(initial_velocity, dtype=float)
+            
+            for i in range(steps):
+                t = i * time_step
+                positions.append(pos.tolist())
+                velocities.append(vel.tolist())
+                # 沿着Y轴（黄色轴）重力
+                vel = vel + np.array([0, -gravity * time_step, 0])
+                pos = pos + vel * time_step
             
             return {
                 "success": True,
                 "data": {
                     "type": "gravity",
-                    "parameters": params,
-                    "results": {
-                        "trajectories": trajectories,
-                        "final_positions": [v.to_dict() for v in self.shapes[-1].vertices],
-                        "time": duration
-                    }
+                    "positions": positions,
+                    "velocities": velocities,
+                    "time_steps": steps
                 }
             }
         except Exception as e:
@@ -529,4 +642,7 @@ class MCPService:
             self.simulation_status["current_simulation"] = None
 
 # 创建全局MCP服务实例
-mcp_service = MCPService() 
+mcp_service = MCPService()
+
+# 全局MCP客户端实例
+mcp_client = MCPClient() 

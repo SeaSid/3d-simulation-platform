@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>OpenJSCAD 3D CAD 编辑器</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="/static/jscad-web/css/demo.css">
+    <style>
+        body { margin: 0; background: #f4f6fa; }
+        #jscad { width: 100vw; height: 100vh; }
+        .navbar { background: #222; color: #fff; padding: 12px 24px; }
+        .navbar-menu { list-style: none; margin: 0; padding: 0; display: flex; gap: 24px; }
+        .navbar-menu li { display: inline; }
+        .navbar-menu a { color: #fff; text-decoration: none; font-weight: bold; }
+        .navbar-menu a.active { color: #ffd700; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <ul class="navbar-menu">
+            <li><a href="/">首页</a></li>
+            <li><a href="/jscad_editor" class="active">OpenJSCAD编辑器</a></li>
+        </ul>
+    </nav>
+    <div id="jscad"></div>
+    <script src="/static/jscad-web/dist/jscad-web.min.js"></script>
+    <script>
+        // 强制清理localStorage和hash，避免缓存干扰
+        Object.keys(localStorage).forEach(k => {
+          if (k.startsWith('jscad-')) localStorage.removeItem(k);
+        });
+        if (window.location.hash) window.location.hash = '';
+
+        const el = document.getElementById('jscad');
+        let demoCode = ''; // 存储demo.js内容
+        
+        // 获取demo.js内容
+        fetch('/static/jscad-web/demo.js')
+          .then(res => res.text())
+          .then(code => {
+            demoCode = code; // 保存demo.js内容
+            const filesAndFolders = [
+              {
+                name: 'demo.js',
+                ext: 'js',
+                fullPath: '/jscad-web/demo.js',
+                source: code
+              }
+            ];
+            const jscadInst = jscadWeb(el, {
+              name: 'jscad1',
+              mainPath: '/jscad-web/demo.js',
+              filesAndFolders
+            });
+
+            // 监听编辑器打开事件
+            const observer = new MutationObserver((mutations) => {
+              mutations.forEach((mutation) => {
+                // 查找编辑器元素
+                const editor = document.querySelector('.CodeMirror');
+                if (editor) {
+                  const cm = editor.CodeMirror;
+                  // 如果编辑器为空，填充demo.js内容
+                  if (cm && cm.getValue().trim() === '') {
+                    cm.setValue(demoCode);
+                    observer.disconnect(); // 填充后停止监听
+                  }
+                }
+              });
+            });
+
+            // 开始监听DOM变化
+            observer.observe(el, {
+              childList: true,
+              subtree: true
+            });
+          });
+    </script>
+</body>
+</html> 
